@@ -70,6 +70,35 @@ quantities of cards, which is about the only remaining use case for the
 legacy tools.
 
 
+Changing an IMSI prefix
+----------------------
+
+Use `pySim-imsi-prefix.sh` to read the current IMSI, authenticate with ADM1,
+replace its leading digits and verify the result. For PC/SC reader 0:
+
+```sh
+./pySim-imsi-prefix.sh -p 0 26201 --dry-run
+./pySim-imsi-prefix.sh -p 0 26201
+```
+
+Both commands wait for a SIM and then continue automatically as cards are
+removed and replaced. Stop with Ctrl+C, or use `--once` to process one SIM.
+The script waits for removal before accepting the next insertion, so it does
+not repeatedly process a SIM left in the reader. A failed SIM is not retried.
+
+The second command prompts for ADM1 without echoing it for each SIM. Alternatively,
+supply a shared PIN with `--adm1 VALUE`. ADM1 accepts up to eight printable ASCII characters or 16 hex
+digits. Authentication is attempted once. The Bash script uses `pySim-shell.py`
+with the repository's `venv/bin/python`, falling back to `python3`.
+Set `PYSIM_PYTHON` to select a different Python executable.
+
+For example, prefix `26201` changes `999700000192019` to `262010000192019`.
+The script replaces exactly as many leading digits as supplied (five or six),
+preserving the IMSI length. It defaults to `ADF.USIM/EF.IMSI`; use
+`--application sim` for `DF.GSM/EF.IMSI`. Only the selected EF.IMSI is written;
+EF.AD (including MNC length), PLMN lists and ISIM identities are unchanged.
+
+
 Git Repository
 --------------
 

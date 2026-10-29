@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import asyncio
 import logging
 from typing import Tuple
 import pyshark
@@ -84,5 +85,8 @@ class PysharkGsmtapPcap(_PysharkGsmtap):
         Args:
             pcap_filename: File name of the pcap file to be opened
         """
-        pyshark_inst = pyshark.FileCapture(pcap_filename, display_filter='gsm_sim || iso7816.atr', use_json=True, keep_packets=False)
+        # Python 3.14 no longer creates an implicit event loop. Supplying one also
+        # avoids pyshark's use of the removed asyncio child-watcher API.
+        pyshark_inst = pyshark.FileCapture(pcap_filename, display_filter='gsm_sim || iso7816.atr', use_json=True,
+                                         keep_packets=False, eventloop=asyncio.new_event_loop())
         super().__init__(pyshark_inst)
