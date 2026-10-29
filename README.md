@@ -99,6 +99,77 @@ preserving the IMSI length. It defaults to `ADF.USIM/EF.IMSI`; use
 EF.AD (including MNC length), PLMN lists and ISIM identities are unchanged.
 
 
+Enabling and disabling ISIM on sysmocom SJA5
+------------------------------------------
+
+`disable-isim.sh` selects USIM IMS fallback by locking the ISIM application,
+removing only its record(s) from EF.DIR, clearing the associated USIM IMS/ePDG
+service bits, and deactivating the corresponding USIM IMS files. It preserves
+ordinary SIM/USIM identities, authentication keys, SMS storage and 5GS settings.
+This follows the mechanism described in section 9.1 of the
+[sysmoISIM-SJA5 manual](https://sysmocom.de/manuals/sysmoisim-sja5-manual.pdf).
+It does not by itself prove that a particular phone or network supports VoLTE/VoWiFi.
+
+The bare commands detect the inserted card and manage backups outside the repository:
+
+```sh
+./disable-isim.sh --dry-run
+./disable-isim.sh
+./enable-isim.sh
+```
+
+The first disable creates a backup under
+`~/.local/state/pysim/isim/ICCID/before-disable-TIMESTAMP.json`; both commands then
+reuse the most recent backup for that same ICCID. This lets an interrupted disable
+resume, and keeps the original enabled state across repeated toggles.
+`XDG_STATE_HOME` overrides `~/.local/state`.
+Both commands display the detected ICCID and backup path. Backups are retained
+across enable/disable cycles. Enabling without a matching backup stops before
+authentication. To require an expected ICCID or use a specific backup instead:
+
+```sh
+iccid=YOUR_CARD_ICCID
+backup="$HOME/.cache/pysim/isim-$iccid-before-disable.json"
+mkdir -p -- "$(dirname -- "$backup")"
+
+# Read-only preview: no PIN verification, secure-channel authentication or writes.
+./disable-isim.sh --iccid "$iccid" --backup "$backup" --dry-run
+
+# Back up the original state, then disable ISIM. Prompts for ADM1 without echo.
+./disable-isim.sh --iccid "$iccid" --backup "$backup"
+
+# Restore the original state, including originally disabled files and service bits.
+./enable-isim.sh --iccid "$iccid" --backup "$backup" --dry-run
+./enable-isim.sh --iccid "$iccid" --backup "$backup"
+```
+
+Both wrappers accept `-p READER` (default 0) and use `venv/bin/python`; override
+the executable with `PYSIM_PYTHON`. For unattended use, ADM1 can be supplied via
+`PYSIM_ADM1`. Do not put credentials in scripts or version control. The helper reads
+the SJA5 issuer SCP02 keyset (security domain 0, key version 0x70) from the
+ADM1-protected card file; it does not guess keys or retry failed authentication.
+Cards whose issuer keys cannot be read in this way are not supported.
+
+New backups are created with mode 0600 and never overwrite an existing file. A
+matching existing backup is validated and reused, including after partial failure.
+Use a new explicit `--backup` path to start from a deliberately changed baseline.
+The backup contains
+subscriber identifiers and the original directory/service/lifecycle state, but no
+PINs or authentication/management keys. Keep it: enabling requires the original
+backup, checks the ICCID, and refuses to overwrite unrelated directory or service
+changes made since disabling. If an operation stops after writes began, reconnect
+the same card and run the enable command with that backup. Each operation stops on
+the first failure; successful writes are read back. The tool resets the card when
+switching from GlobalPlatform management back to ordinary UICC file access, then
+verifies the same supplied ADM1 in the fresh session. Failed verification is never
+retried. No applet is deleted.
+
+Power-cycle the phone or remove/reinsert the SIM after changing the card. Enabling
+restores the original ISIM contents; it does not populate missing IMPI, IMPU, domain
+or P-CSCF values. The initial inspection in `osmocom-sim-report.md` remains an
+unchanged historical snapshot.
+
+
 Git Repository
 --------------
 

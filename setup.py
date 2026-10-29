@@ -39,6 +39,7 @@ setup(
         'pySim-prog.py',
         'pySim-read.py',
         'pySim-shell.py',
+        'pySim-isim.py',
         'pySim-trace.py',
         'pySim-smpp2sim.py',
     ],
